@@ -11,11 +11,9 @@ Created on Mon Feb 20 15:34:59 2023
 
 import matplotlib.pyplot as plt
 import numpy as np
-import random 
 
 from scipy.optimize import curve_fit
 
-np.random.seed(19680801)
 
 class Fit:
     def __init__(self, x, y , sigma):
@@ -38,8 +36,7 @@ class Fit:
         self.x = x
         self.y = y
         self.sigma = sigma 
-        self.h = 1.e-7
-        
+        self.h = 1.e-9
     def function(self, *parameters):
         '''
         Calculates the function given at the end of the parameters. 
@@ -62,10 +59,20 @@ class Fit:
         '''
         if (parameters[2]=='linear'):
             f = parameters[0]*self.x + parameters[1]
+            self.h = np.max(self.x*parameters[0] + parameters[1]) * 10**(-8)
+            
         if (parameters[2]=='squareroot'):
             f = np.sqrt(parameters[0]*self.x + parameters[1])
+            #self.h = np.max(parameters[0]*self.x + parameters[1])* (10**(-9))
+            #Here, if we update h with the sqrt term, the dampening is not heigthened enough...
+            #And abberations appears in the fisher calculations... : 
+            self.h = np.max(f) * (10**(-7))
         if (parameters[2]=='expo'):
             f = parameters[1]*np.exp(self.x*parameters[0])
+            self.h = np.max(f) * (10**(-9))
+            
+            
+            
         return f
     
     def generate_data(self, low_x, high_x, N, sig, *parameters):
@@ -79,18 +86,18 @@ class Fit:
             The lower limit for the array of x.
         high_x : numerical value
             The upper limit for the array of x.
-        N : integer
-            Number of data points generated in the range of [low_x, high_x]
+        N : integersquareroot
+            Number of data points generated in the range of [low_x, high_x]self.h = np.max(np.sqrt(parameters[0]*self.x + parameters[1]))* (10**(-9))
         sigma : numerical value.
             The percent of the function taken as an uncertainty on each entry of y.
        *parameters : tuple of differents types of entries. 
            see the definition in function()
         '''
         self.x = np.linspace(low_x, high_x, N)
-        #self.sigma= np.ones(N)*sigma
         self.sigma = sig * self.function(*parameters)
-        
-        self.y = np.random.normal(self.function(*parameters), self.sigma) 
+
+        self.y = np.random.normal(self.function(*parameters), sig)
+
         #We add a random gaussian uncertainty to our y data. 
 
     def xi_square(self, *parameters):
@@ -108,7 +115,7 @@ class Fit:
             The Xi_square value. 
 
         '''
-        X = np.sum(((self.y-self.function(*parameters))**2)/(self.sigma**2))
+        X = np.sum(((self.y-self.function(*parameters))**2))
         return X
     
     def updating_a_parameter(self, i_par, i_list, *parameters):
@@ -158,7 +165,7 @@ class Fit:
         j_list : list of numerical values. 
             How much at each interation we modify the second paramater by h. 
         *parameters : tuple of differents types of entries. 
-              see the definition in function()
+              see the definition in function()w
 
         Returns
         -------
@@ -238,7 +245,6 @@ class Fit:
         -------
         F : numpy.array of size [n_param x n_param] 
             The Fisher matrix. 
-
         '''
         n_param = 2
         F = np.zeros([n_param,n_param])
@@ -248,8 +254,6 @@ class Fit:
                     F[i,j] = 0.5*self.diff_Xi2_twice(i, *parameters)
                 else:
                     F[i, j] = 0.5*self.diff_Xi2_didj(i, j, *parameters)
-        #print('Output : \n Fisher Matrix :\n',F,'\n','Covariance Matrice for Fisher : \n', np.mat(F).I)
-        #print('Bad Fisher/Cov matrix correlation \n Fisher Covariance : \n', np.mat(F).I)
         return F
     def cov_fisher(self, *parameters):
         '''
@@ -267,7 +271,6 @@ class Fit:
 
         '''
         covariance_matrix = np.mat(self.fisher(*parameters)).I
-        print('Covariance matrix : \n', covariance_matrix)
         return covariance_matrix
     
     
@@ -286,17 +289,15 @@ class Fit:
         Returns
         -------
         uncertainty_matrix : numpy.array of size [n_param x n_param] 
-            The uncertainty matrix calculated by the Fisher method. 
+            The uncertainty matrix calcuecuted a certain command. Statements can be selected and copied from the context menu or with the normal system shortcuts. Just like in the Editor, selecting a word or phrase displays all other occurrences, and full syntax highlighting is also supported. The last ≈1000 lines entered are stored in the pane.
+
+lated by the Fisher method. 
 
         '''
         uncertainty_matrix = np.sqrt(self.cov_fisher(*parameters))
-        print('Uncertainty : \n', uncertainty_matrix)
         return uncertainty_matrix
     
-    
-    
-    
-    def xi_distrib(self, max_param, *parameters):
+    def xi_distrib(self, max_param):
         '''
         Generate a Xi_square distribution over the parameters of the function. 
         Here, it is calibrated for only two parameters. 
@@ -314,86 +315,113 @@ class Fit:
 
         '''
         r = []
-        for i in range(max_param):
-            for j in range(max_param):
+        for i in max_param:
+            for j in max_param:
                 r.append((i, j, self.xi_square(i, j, 'linear')))
                 
         tt = np.rec.fromrecords(r, names=['a','b','chisquare'])
-        plt.hist(tt['chisquare'], histtype='step', bins = 'auto')
-        min_xi_square = np.min(tt['chisquare'])
-        print('Plot finish, min Xisquare :', min_xi_square)
-    def compare(self, max_a):
-        Diff = []
-        delta_fisher = []
-        delta_fit = []
-        a_range = np.arange(1, 100)
-        for i in a_range:
-            self.generate_data(1, 100, 100, 1, i, 1, 'linear')
-            F = self.fisher(i ,1, 'linear')
-            print(F)
-            popt, pcov = curve_fit(self.function(0, 0, 'linear'), self.x, self.y, sigma = self.sigma, absolute_sigma=True)
-            delta_fisher.append(np.sqrt(np.array(np.mat(F).I))[0][0])
-            delta_fit.append(np.sqrt(pcov[0][0]))
-        Diff = np.array(delta_fisher) - np.array(delta_fit)
-        plt.figure()
-        plt.plot(a_range, delta_fisher, 'x', label='Fisher uncertainty')
-        plt.plot(a_range, delta_fit, label='curve_fit uncertainty')
-        plt.plot(a_range, Diff, label='Difference between Fisher and fit uncertainties')
-        plt.title('Uncertainties against the paramater a for f(x) = ax+1')
-        plt.xlabel('Parameter a')
-        plt.ylabel('Uncertainty')
-        plt.legend()
+        # tt = tt/(len(self.x)-2)
+        # plt.hist(tt['chisquare'], histtype='step', bins = 'auto')
+        # plt.xlabel('values of Xisquare')
+        # min_xi_square = np.min(tt['chisquare'])
+        # print('Plot finish, min Xisquare :', min_xi_square)
+        return tt
+        
+        
+    
 
 def Linear(x, a, b):
 
     #print('Function : Linear ')
     res = x*a+b
     #print('Output : \n {} \n---------------------'.format(res))
-    # res2 = np.sqrt(x*a + b)
+    # res = np.sqrt(x*a + b)
     # res3 = b*np.exp(a*x)
     return res
 
+def compare_difference(low_x, high_x, N, a_max, b, function):
+    Diff = []
+    delta_fisher = []
+    delta_fit = []
+    a_range = np.arange(1, a_max)
 
-#A.xi_distrib(100, 0, 0, 'linear')
+    for i in a_range:
+        B = Fit(0, 0, 0)
+        B.generate_data(low_x, high_x, N, 0.01, i, b, function)
+        F = B.fisher(i ,b, function)
+        popt, pcov = curve_fit(Linear, B.x, B.y, sigma = B.sigma, absolute_sigma=True)
+        delta_fisher.append(np.sqrt(np.array(np.mat(F).I)[0][0]))
+        delta_fit.append(np.sqrt(pcov[0][0]))
+    Diff = np.array(delta_fisher) - np.array(delta_fit)
+    plt.figure(figsize=(16, 10))
+    if (function=='linear'):
+        fu = r'ax+1'
+    if (function=='squareroot'):
+        fu = r'$\sqrt{ax+1}$'
+    if (function=='expo'):
+        fu = r'$e^{ax}$'
+    plt.suptitle('Uncertainties against the parameter a for f(x) = {}'.format(fu), fontsize = 20)
+    plt.subplot(1, 2, 1)
+    plt.plot(a_range, delta_fisher, 'x', label='Fisher uncertainty')
+    plt.plot(a_range, delta_fit, label='curve_fit uncertainty')
+    #plt.plot(a_range, Diff, label='Difference between Fisher and fit uncertainties')
+    plt.xlabel('Parameter a')
+    plt.ylabel('Uncertainty')
+    
+    plt.legend(fontsize=20)
+    plt.grid()
+    plt.subplot(1, 2, 2)
+    #plt.plot(a_range, delta_fisher, 'x', label='Fisher uncertainty')
+    # plt.plot(a_range, delta_fit, label='curve_fit uncertainty')
+    plt.plot(a_range, Diff, label='Difference Fisher and fit')
+    plt.xscale('log')
+    plt.xlabel('Parameter a')
+    plt.ylabel('Uncertainty')
+    
+    plt.legend(fontsize=20)
+    return delta_fisher, delta_fit
+
+def compare_relat(low_x, high_x, N, a_max, b, function):
+    Relat = [] 
+    delta_fisher = []
+    delta_fit = []
+    a_range = np.arange(1, a_max)
+
+    for i in a_range:
+        B = Fit(0, 0, 0)
+        B.generate_data(low_x, high_x, N, 0.01, i, b, function)
+        F = B.fisher(i ,b, function)
+        popt, pcov = curve_fit(Linear, B.x, B.y, absolute_sigma=True)
+        delta_fisher.append(np.sqrt(np.array(np.mat(F).I)[0][0]))
+        delta_fit.append(np.sqrt(pcov[0][0]))
+        Relat.append((np.sqrt(np.array(np.mat(F).I)[0][0])-np.sqrt(pcov[0][0]))/np.sqrt(pcov[0][0]))
+    plt.figure(figsize=(16, 10))
+    if (function=='linear'):
+        fu = r'ax+1'
+    if (function=='squareroot'):
+        fu = r'$\sqrt{ax+1}$'
+    if (function=='expo'):
+        fu = r'$e^{ax}$'
+    plt.suptitle('Uncertainties against the parameter a for f(x) = {} \n Number of data points : {}'.format(fu, N), fontsize = 20)
+    plt.subplot(1, 2, 1)
+    plt.plot(a_range, delta_fisher, 'x', label='Fisher uncertainty')
+    plt.plot(a_range, delta_fit, label='curve_fit uncertainty')
+    #plt.plot(a_range, Diff, label='Difference between Fisher and fit uncertainties')
+    plt.xlabel('Parameter a')
+    plt.ylabel(r'$\Delta(x)$')
+    
+    plt.legend(fontsize=20)
+    plt.grid()
+    plt.subplot(1, 2, 2)
+    #plt.plot(a_range, delta_fisher, 'x', label='Fisher uncertainty')
+    # plt.plot(a_range, delta_fit, label='curve_fit uncertainty')
+    plt.plot(a_range, Relat, label=r'$\frac{\Delta(Fisher) -\Delta(fit)}{\Delta(fit)}$')
+
+    plt.xlabel('Parameter a')
+    plt.ylabel('Uncertainty')
+    
+    plt.legend(fontsize=20)
+    return delta_fisher, delta_fit
 
 
-
-
-
-A = Fit(0, 0, 0)
-A.generate_data(0, 10, 100, 0.01, 1, 1, 'linear')
-
-A.uncertainty_matrix(1, 1, 'linear')
-# Diff = []
-# delta_fisher = []
-# delta_fit = []
-# a_range = np.arange(1, 100)
-
-
-# for i in a_range:
-#     B = Fit(0, 1, 0)
-#     B.generate_data(1, 100, 100, 1, i, 1)
-#     F = B.fisher(i ,1)
-#     print("b", np.shape(B.sigma))
-#     popt, pcov = curve_fit(Linear, B.x, B.y, sigma = B.sigma, absolute_sigma=True)
-#     delta_fisher.append(np.sqrt(np.array(np.mat(F).I))[0][0])
-#     delta_fit.append(np.sqrt(pcov[0][0]))
-# Diff = np.array(delta_fisher) - np.array(delta_fit)
-# plt.figure()
-
-
-
-
-# plt.plot(a_range, delta_fisher, 'x', label='Fisher uncertainty')
-# plt.plot(a_range, delta_fit, label='curve_fit uncertainty')
-# plt.plot(a_range, Diff, label='Difference between Fisher and fit uncertainties')
-# plt.title('Uncertainties against the paramater a for f(x) = ax+1')
-# plt.xlabel('Parameter a')
-# plt.ylabel('Uncertainty')
-# plt.legend()
-
-
-# popt, pcov = curve_fit(Linear, B.x, B.y, sigma = B.sigma, absolute_sigma=True)
-# print('Optimal parameters :',popt,'\n Covariance matrix for the fitted curve :\n', pcov)
-# print('Differences between the Fisher method and the fitted method :\n', pcov/(np.mat(F).I))
-
+compare_relat(1, 100, 10000, 100, 1, 'linear')
