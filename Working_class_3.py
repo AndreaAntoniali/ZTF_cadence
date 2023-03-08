@@ -121,9 +121,13 @@ class Fit:
             The Xi_square value. 
 
         '''
-        X = np.sum(((self.y-self.function(*parameters))**2)/self.sigma**2)
-        return X
-    
+        #Numerical calculations for each entry
+        #X = np.sum(((self.y-self.function(*parameters))**2)/self.sigma**2)
+        diag_sigma = np.linalg.inv(np.diag(self.sigma**2))
+        f = self.y -self.function(*parameters)
+        X_mat = np.matmul(f * self.sigma**-2, f) #Matrix calculation of Xisquare
+        return X_mat
+        
     def updating_a_parameter(self, i_par, i_list, *parameters):
         '''
         Updates a parameter by an small amount and calculates the Xisquare 
@@ -359,4 +363,4 @@ def compare(low_x, high_x, N, a_max, b, function):
 
 #If one wants to use this function, the function Linear at line 345 must be changed accordingly
 #so the curve fit has the same expression to fit as the fisher method. 
-compare(1, 101, 100000, 1000, 1, 'linear')
+#compare(1, 101, 200, 1000, 1, 'linear')
