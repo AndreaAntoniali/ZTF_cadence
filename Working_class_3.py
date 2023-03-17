@@ -12,6 +12,7 @@ Created on Mon Feb 20 15:34:59 2023
 import matplotlib.pyplot as plt
 import numpy as np
 
+from astropy.cosmology import w0waCDM
 from scipy.optimize import curve_fit
 
 
@@ -54,7 +55,7 @@ class Fit:
             'linear' : a*x + b
             'squareroot' : np.sqrt(a*x+b)
             'expo' : b*np.exp(x*a)
-            
+            'distmod' : distance modulus as given by astropy.cosmology for w0waCDM 
         Returns
         -------
         f : array of numerical values
@@ -74,10 +75,12 @@ class Fit:
             f = parameters[1]*np.exp(self.x*parameters[0])
             self.h = np.max(f) * (10**(-9))
             
-            
-            
+        if (parameters[2]=='distmod'):
+           cosmo = w0waCDM(H0=70, Om0=0.3, Ode0=0.7, w0 = parameters[0], wa = parameters[1])
+           f = cosmo.distmod(self.x).value
+           self.h = np.max(f) * (10**-8)
+           
         return f
-    
     def generate_data(self, low_x, high_x, N, sig, *parameters):
         '''
         Generates new data for our instance ; it changes the instance variable ;
@@ -101,6 +104,7 @@ class Fit:
        *parameters : tuple of differents types of entries. 
            see the definition in function()
         '''
+        np.random.seed(10)
         self.x = np.linspace(low_x, high_x, N)
         self.sigma = sig * self.function(*parameters)
 
@@ -316,10 +320,13 @@ class Fit:
     
 
 def Linear(x, a, b):
-    res = x*a+b #linear
-    # res2 = np.sqrt(x*a + b) #squareroot
+    # res = x*a+b #linear
+    #res2 = np.sqrt(x*a + b) #squareroot
     #res3 = b*np.exp(a*x) #expo
-    return res
+    
+    cosmo = w0waCDM(H0=70, Om0=0.3, Ode0=0.7, w0 = a, wa = b)
+    res4 = cosmo.distmod(x).value
+    return res4
 
 
 def compare(low_x, high_x, N, a_max, b, function):
@@ -363,4 +370,4 @@ def compare(low_x, high_x, N, a_max, b, function):
 
 #If one wants to use this function, the function Linear at line 345 must be changed accordingly
 #so the curve fit has the same expression to fit as the fisher method. 
-#compare(1, 101, 200, 1000, 1, 'linear')
+#compare(1, 2, 200, 10, 1, 'distmod')
