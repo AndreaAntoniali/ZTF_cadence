@@ -124,11 +124,11 @@ class Fit:
             The Xi_square value. 
         '''
         #Numerical calculations for each entry
-        #X = np.sum(((self.y-self.function(*parameters))**2)/self.sigma**2)
-        diag_sigma = np.linalg.inv(np.diag(self.sigma**2))
-        f = self.y -self.function(*parameters)
-        X_mat = np.matmul(f * self.sigma**-2, f) #Matrix calculation of Xisquare
-        #X_mat = X_mat + ((parameters[0] - 0.3)**2)/0.0073**2
+        X_mat = np.sum(((self.y-self.function(*parameters))**2)/self.sigma**2)
+        # diag_sigma = np.linalg.inv(np.diag(self.sigma**2))
+        # f = self.y -self.function(*parameters)
+        # X_mat = np.matmul(f * self.sigma**-2, f) #Matrix calculation of Xisquare
+        #X_mat = X_mat + ((parameters[2] - 0.3)**2)/0.0073**2
         return X_mat
         
     def updating_a_parameter(self, i_par, i_list, *parameters):
@@ -339,6 +339,8 @@ class Fit:
     
     def minuit_parameters(self, *parameters):
         return self.minuit_fit(*parameters).params
+    def minuit_values(self, *parameters):
+        return self.minuit_fit(*parameters).values
     
 def Linear(x, a, b):
     res = x*a+b #linear
@@ -402,8 +404,6 @@ def compare(low_x, high_x, N, a_max, b, function):
 #so the curve fit has the same expression to fit as the fisher method. 
 
     
-# A= Fit(0, 0, 0)
-# A.generate_data(0, 10, 20, 0.01, 2, 1, 'linear')
 # least_square = LeastSquares(A.x, A.y, A.sigma, Linear)
 # m = Minuit(least_square, a = 2, b = 1)
 # m.migrad()
@@ -417,8 +417,3 @@ def compare(low_x, high_x, N, a_max, b, function):
 # print(m)
 # print(a_fit, b_fit)
 # print(A.cov_fisher(2, 1, 'linear'))
-
-A = Fit(0, 0, 0)
-A.generate_data(0.01, 1.1, 200, 0.01, -1, 0, 0.3)
-print(A.minuit_covariance(-1, 0, 0.3))
-print(np.array(A.minuit_parameters(-1, 0, 0.3))
