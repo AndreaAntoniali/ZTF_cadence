@@ -78,7 +78,7 @@ class Fit:
         cosmo = w0waCDM(H0=70, Om0= parameters[2], Ode0=0.7, \
                         w0 = parameters[0], wa = parameters[1])
         f = cosmo.distmod(self.x).value
-        self.h = np.max(f) * (10**-8)
+        self.h = np.max(f) * (10**-7)
 
         return f
     
@@ -124,11 +124,11 @@ class Fit:
             The Xi_square value. 
         '''
         #Numerical calculations for each entry
-        X_mat = np.sum(((self.y-self.function(*parameters))**2)/self.sigma**2)
+        #X_mat = np.sum(((self.y-self.function(*parameters))**2)/self.sigma**2)
         # diag_sigma = np.linalg.inv(np.diag(self.sigma**2))
-        # f = self.y -self.function(*parameters)
-        # X_mat = np.matmul(f * self.sigma**-2, f) #Matrix calculation of Xisquare
-        #X_mat = X_mat + ((parameters[2] - 0.3)**2)/0.0073**2
+        f = self.y -self.function(*parameters)
+        X_mat = np.matmul(f * self.sigma**-2, f) #Matrix calculation of Xisquare
+        X_mat = X_mat + ((parameters[2] - 0.3)**2)/0.0073**2
         return X_mat
         
     def updating_a_parameter(self, i_par, i_list, *parameters):
@@ -224,6 +224,7 @@ class Fit:
         i_list = [+1, -1, -1]
         D = self.updating_a_parameter(i_par, i_list, *parameters)
         Diff = (D[0]-2*D[1]+D[2])/(self.h**2)
+
         return Diff
 
     def diff_Xi2_didj(self, i_par, j_par, *parameters):
@@ -292,7 +293,9 @@ class Fit:
             The covariance matrix. 
 
         '''
-        covariance_matrix = np.mat(self.fisher(*parameters)).I
+        covariance_matrix = np.linalg.inv(self.fisher(*parameters))
+        #print('mat method \n',np.mat(self.fisher(*parameters)).I)
+        
         return covariance_matrix
     
     
@@ -330,6 +333,7 @@ class Fit:
 
         '''
         m = Minuit(self.xi_square, *parameters)
+        m.limits['x2'] = (0, None)
         m.migrad()
         m.hesse()
         return m
@@ -402,18 +406,3 @@ def compare(low_x, high_x, N, a_max, b, function):
 
 #If one wants to use this function, the function Linear at line 345 must be changed accordingly
 #so the curve fit has the same expression to fit as the fisher method. 
-
-    
-# least_square = LeastSquares(A.x, A.y, A.sigma, Linear)
-# m = Minuit(least_square, a = 2, b = 1)
-# m.migrad()
-# m.hesse()
-# a_fit, b_fit = m.values['a'], m.values['b']
-# plt.figure()
-# plt.errorbar(A.x, A.y, yerr= A.sigma, fmt = 'ok')
-# x_range = np.linspace(1, 10, 100)
-
-# plt.plot(x_range, Linear(x_range, a_fit, b_fit))
-# print(m)
-# print(a_fit, b_fit)
-# print(A.cov_fisher(2, 1, 'linear'))
