@@ -78,7 +78,7 @@ class Fit:
         cosmo = w0waCDM(H0=70, Om0= parameters[2], Ode0=0.7, \
                         w0 = parameters[0], wa = parameters[1])
         f = cosmo.distmod(self.x).value
-        self.h = np.max(f) * (10**-7)
+        self.h = np.max(f) * (10**-5)
 
         return f
     
@@ -93,7 +93,7 @@ class Fit:
             The lower limit for the array of x.
             
         high_x : numerical value
-            The upper limit for the array of x.
+            The upper limit for the array of x.2
     
         N : integersquareroot
             Number of data points generated in the range of 
@@ -124,11 +124,11 @@ class Fit:
             The Xi_square value. 
         '''
         #Numerical calculations for each entry
-        #X_mat = np.sum(((self.y-self.function(*parameters))**2)/self.sigma**2)
+        # X_mat = np.sum(((self.y-self.function(*parameters))**2)/self.sigma**2)
         # diag_sigma = np.linalg.inv(np.diag(self.sigma**2))
         f = self.y -self.function(*parameters)
         X_mat = np.matmul(f * self.sigma**-2, f) #Matrix calculation of Xisquare
-        X_mat = X_mat + ((parameters[2] - 0.3)**2)/0.0073**2
+        # X_mat = X_mat + ((parameters[2] - 0.3)**2)/0.0073**2
         return X_mat
         
     def updating_a_parameter(self, i_par, i_list, *parameters):
@@ -317,7 +317,8 @@ class Fit:
             The uncertainty matrix. 
 
         '''
-        uncertainty_matrix = np.sqrt(self.cov_fisher(*parameters))
+        uncertainty_matrix = np.sqrt(np.diag(self.\
+                                             covariance_fisher(*parameters)))
         return uncertainty_matrix
     
     
