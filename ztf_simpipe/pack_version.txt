@@ -1,0 +1,4 @@
+# list of packages and tagged github version
+ztf_simpipe dev
+ztf_simfit dev
+ztf_cadence dev
